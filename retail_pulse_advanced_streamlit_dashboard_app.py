@@ -49,8 +49,44 @@ if page == "📁 Upload Dataset":
         else:
             df = pd.read_excel(uploaded_file)
 
-        st.session_state["data"] = df
-        st.success("Dataset uploaded successfully!")
+        # Standardize column names
+df.columns = df.columns.astype(str).str.strip()
+
+# Rename original Online Retail II columns
+column_mapping = {
+    "Invoice": "InvoiceNo",
+    "Price": "UnitPrice",
+    "Customer ID": "CustomerID"
+}
+
+df = df.rename(columns=column_mapping)
+
+# Convert numeric columns
+for col in ["Quantity", "UnitPrice"]:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+# Convert date column
+if "InvoiceDate" in df.columns:
+    df["InvoiceDate"] = pd.to_datetime(
+        df["InvoiceDate"], errors="coerce"
+    )
+
+# Create TotalPrice
+if "Quantity" in df.columns and "UnitPrice" in df.columns:
+    df = df.dropna(subset=["Quantity", "UnitPrice"])
+    df = df[
+        (df["Quantity"] > 0) &
+        (df["UnitPrice"] > 0)
+    ].copy()
+
+    df["TotalPrice"] = df["Quantity"] * df["UnitPrice"]
+
+# Save processed dataset
+st.session_state["data"] = df
+
+st.success("Dataset uploaded and processed successfully!")
+        
 
         st.subheader("Dataset Preview")
         st.dataframe(df.head())
